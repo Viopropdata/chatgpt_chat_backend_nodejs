@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Chat with GPT</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    #chat-box { border: 1px solid #ccc; padding: 10px; height: 300px; overflow-y: scroll; margin-bottom: 10px; }
+    .user-message { color: blue; margin-bottom: 10px; }
+    .assistant-message { color: green; margin-bottom: 10px; }
+    form { display: flex; gap: 10px; }
+    input[type="text"] { flex: 1; padding: 8px; }
+    button { padding: 8px 16px; }
+  </style>
+</head>
+<body>
+  <h1>Chat with GPT</h1>
+  <div id="chat-box"></div>
+  <form id="chat-form">
+    <input type="text" id="message" placeholder="Type your message" autocomplete="off" required />
+    <button type="submit">Send</button>
+  </form>
+
+  <script>
+    const chatBox = document.getElementById('chat-box');
+    const form = document.getElementById('chat-form');
+    const messageInput = document.getElementById('message');
+
+    // Initialize chat history for this page session
+    let chatHistory = [];
+
+    function addMessage(text, sender) {
+      const div = document.createElement('div');
+      div.classList.add(sender === 'user' ? 'user-message' : 'assistant-message');
+      div.textContent = sender === 'user' ? 'You: ' + text : 'Assistant: ' + text;
+      chatBox.appendChild(div);
+      chatBox.scrollTop = chatBox.scrollHeight;
+
+      // Update chat history
+      chatHistory.push({ sender, message: text });
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const message = messageInput.value.trim();
+      if (!message) return;
+
+      // Add user message to the UI and history
+      addMessage(message, 'user');
+      messageInput.value = '';
+
+      try {
+        const response = await fetch('/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ whole_chat: [{ sender: 'user', message }] }) // Send only the new message
+        });
+
+        const data = await response.json();
+        if (data.reply) {
+          addMessage(data.reply, 'assistant');
+        } else {
+          addMessage('Error: No reply from server', 'assistant');
+        }
+
+        // Optionally update chat history with the full response from server
+        // chatHistory = data.chat_history || chatHistory;
+      } catch (err) {
+        addMessage('Error: ' + err.message, 'assistant');
+      }
+    });
+  </script>
+</body>
+</html>
