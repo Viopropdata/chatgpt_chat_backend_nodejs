@@ -19,22 +19,16 @@ if (!OPENAI_API_KEY || OPENAI_API_KEY === "your-api-key-here") {
 }
 
 // Default prompt to build the assistant's character
-const DEFAULT_PROMPT = `Act primarily as a commercial real etate financing calculator who knows commercial real estate properties like a seasoned expert. `;
-
-// In-memory chat history
-// let chatHistory = [];
+const DEFAULT_PROMPT = `Act primarily as a commercial real estate financing calculator who knows commercial real estate properties like a seasoned expert.`;
 
 // Setup middleware
 app.use(cors());
 app.use(bodyParser.json());
 
-// // Serve static files from the 'public' directory
+// Serve static files from the 'public' directory
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 app.use(express.static(path.join(__dirname, 'public')));
-
-// In-memory chat history (move outside for persistence across requests; use a DB for production)
-let chatHistory = [{'sender': 'system', 'message': DEFAULT_PROMPT}];
 
 app.post('/chat', async (req, res) => {
     const { whole_chat } = req.body;
@@ -44,8 +38,8 @@ app.post('/chat', async (req, res) => {
         return res.status(400).json({ error: "whole_chat must be a non-empty array" });
     }
 
-    // Append the incoming whole_chat entries to the existing history
-    chatHistory = [...chatHistory, ...whole_chat];
+    // Create the chat history for this request only, starting with the default prompt
+    const chatHistory = [{'sender': 'system', 'message': DEFAULT_PROMPT}, ...whole_chat];
 
     // Convert chat history to a readable string for the prompt
     const historyText = chatHistory
@@ -60,11 +54,11 @@ app.post('/chat', async (req, res) => {
             prompt: historyText, // Pass the formatted string
         });
 
-        // Add the assistant's response to the history
-        chatHistory.push({ 'sender': 'assistant', 'message': text });
+        // Add the assistant's response to the history for the response
+        const updatedChatHistory = [...chatHistory, { 'sender': 'assistant', 'message': text }];
 
-        // Return the updated chat history and the assistant's reply
-        return res.json({ reply: text, chat_history: chatHistory });
+        // Return the assistant's reply and the updated chat history
+        return res.json({ reply: text, chat_history: updatedChatHistory });
     } catch (error) {
         console.error("Error calling OpenAI API:", error.message);
         res.status(500).json({ error: "Failed to get response from OpenAI API" });
@@ -72,7 +66,7 @@ app.post('/chat', async (req, res) => {
 });
 
 app.get('/test', async (req, res) => {
-    return res.json("API is working")
+    return res.json("API is working");
 });
 
 app.listen(PORT, () => {
